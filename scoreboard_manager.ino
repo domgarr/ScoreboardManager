@@ -5,20 +5,26 @@
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
 
+#if SOFTWARE_SERIAL_AVAILABLE
+  #include <SoftwareSerial.h>
+#endif
+
 #include <Adafruit_NeoPixel.h>
 
 #include "BluefruitConfig.h"
 
 #define RED_SCORE_ID "1"
 #define BLUE_SCORE_ID "2"
+#define BRIGHTNESS 25
+#define GAMEPOINT 25
 
 
 // Which pin on the Arduino is connected to the NeoPixels?
 // On a Trinket or Gemma we suggest changing this to 1
-#define PIN            5
+#define PIN            9
 
 // How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS     140
+#define NUMPIXELS   140
 
 #define ROW 7
 #define COL 5
@@ -26,33 +32,21 @@
 // When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
 // Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
 // example for more information on possible values.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ400);
 
 /* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
-
-
-// A small helper
-void error(const __FlashStringHelper*err) {
-  Serial.println(err);
-  while (1);
-}
 
 /* The service information */
 /* int32_t is a data type of exactly 32 bits no more no less. Int can be any size >= 16 bits. */
 int32_t sbServiceId;
 int32_t sbRedScoreCharId;
 int32_t sbBlueScoreCharId;
-int32_t connection;
-
-
 
 int redScore = 0;
 int blueScore = 0;
 int prevRedScore = redScore;
 int prevBlueScore = blueScore;
-
 
  const char zero_left[] =  "01110100011001110101110011000101110";
  const char zero_right[] = "01110100011100110101100111000101110";
@@ -75,250 +69,187 @@ int prevBlueScore = blueScore;
  const char nine_left[] = "01110100011000111110000011000101110";
  const char nine_right[] = "01110100010000111110100011000101110";
 
- const char S_left[] = "01110100011000001110000011000101110";
-const char S_right[] = "01110100010000101110100001000101110";
-const char P_left[] = "11110100011000110001111100000110000";
-const char P_right[] = "10000000011111010001100011000111110";
-const char I_left[] = "11111001000010000100001000010011111";
-const char I_right[] = "11111001000010000100001000010011111";
-const char N_left[] = "10001100011100110101100111000110001";
-const char N_right[] = "10001100011001110101110011000110001";
+//Game Point
+const char g_left[] = "00000011101001001001011100100011100";
+const char a_right[] = "01110010010111001000011000000000000";
+const char m_left[] = "00000000001111010101101011010110101";
+const char e_right[] = "01110000011111001001011000000000000";
+const char p_left[] = "00000001111001001001111000000110000";
+const char o_with_i_right[] = "01101110011001111001011010000000001";
+const char n_left[] = "00000000001110001001100100100110010";
+const char t_right[] = "00110000100100000010111100001000000";
+
+//Spin to Win
+const char S_left[] = "01110100011000001110000011000101110";
+const char p_right[] = "10000000011110001001100100011100000";
+const char i_left[] = "00100000000010000100001000010000100";
+const char n_right[] = "10010010011001001001111000000000000";
+const char t_left[] = "00000000101111000010010000001000110";
+const char o_right[] = "01100010011001001001011000000000000";
+const char W_left[] = "10001100011000110001101011101110001";
+//i_with_n_right[]
+const char z_right[] = "11001100111100110011111100000010000";
 
 const char *p_to_character; //This will point to the next pixel grid to be drawn.
-/**************************************************************************/
-/*!
-    @brief  Sets up the HW an the BLE module (this function is called
-            automatically on startup)
-*/
-/**************************************************************************/
+
 void setup(void)
 {
-  
+  delay(2000);
 
   boolean success;
   /*Based off of Adafruit Bluefruit Heart Rate Monitor (HRM) Example */
   
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   
-  Serial.println(F("Adafruit Bluefruit Scoreboard Monitor (SbM)"));
-  Serial.println(F("---------------------------------------------------"));
+  //Serial.println(F("Adafruit Bluefruit Scoreboard Monitor (SbM)"));
+ // Serial.println(F("---------------------------------------------------"));
 
   randomSeed(micros()); /* Not sure of the purpose of this */
 
   /* Initialise the module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
+  //Serial.print(F("Initialising the Bluefruit LE module: "));
 
-  if ( !ble.begin(VERBOSE_MODE) )
-  {
-    error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
-  }
+  ble.begin(VERBOSE_MODE) ;
+ 
+
+   ble.info();
   Serial.println( F("OK!") );
-
-
- Serial.println("AT+FACTORYRESET");
   
   /* Perform a factory reset to make sure everything is in a known state 
      Keep this line in for now. Test later it might not be needed.
  */ 
 
+  Serial.println("AT+FACTORYRESET");
   
-  Serial.println(F("Performing a factory reset: "));
-  if (! ble.factoryReset() ){
-       error(F("Couldn't factory reset"));
-  }
+  //Serial.println(F("Performing a factory reset: "));
+ ble.factoryReset();
+ 
       
   /* Disable command echo from Bluefruit */
   ble.echo(false);
 
-  Serial.println("Requesting Bluefruit info:");
-  /* Print Bluefruit information */
-  ble.info();
-
-  // this line is particularly required for Flora, but is a good idea
-  // anyways for the super long lines ahead!
-  // ble.setInterCharWriteDelay(5); // 5 ms
-
   /* Change the device name to make it easier to find */
   Serial.println(F("Setting device name to 'Bluefruit SbM': "));
 
-  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Bluefruit SbM")) ) {
-    error(F("Could not set device name?"));
-  }
+   ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Bluefruit SbM"));
 
   /* Checks if connected to another BLE device, if it is disconnect from it */
- 
-      ble.sendCommandCheckOK(F("AT+GAPDISCONNECT"));
+       ble.sendCommandCheckOK(F("AT+BLEPOWERLEVEL=4"));
+       ble.sendCommandCheckOK(F("AT+GAPDISCONNECT"));
+
      
-
-
    /* 
   *  This seems necessary to updating the GATT characteristics. Without the addition of this code, any changes
   *  made to GATTADDCHAR didn't seem to have an effect.
   */
   
- if (!ble.sendCommandCheckOK(F("AT+GATTCLEAR")) ) {
-    error(F("Could not clear GATT"));
-  }
+ ble.sendCommandCheckOK(F("AT+GATTCLEAR")) ;
+  
 
   /* Add the Scoreboard Service definition */
   /* Service ID should be 1 */
   Serial.println(F("Adding the Scoreboard service definition (UUID = 0x2D68): "));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID128=92-ee-e2-7c-33-3f-4f-49-a8-15-0b-74-5d-81-0c-5d"), &sbServiceId);
-  if (! success) {
-    error(F("Could not add SbM service"));
-  }
+
 
   /* Add the Red Score characteristic */
   /* Chars ID for Red Score should be 1 */
   Serial.println(F("Adding the red score characteristic (UUID = 0x9c9c): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0xac3b, PROPERTIES=0x0A, MIN_LEN=1, MAX_LEN=4, VALUE=2, DESCRIPTION= Red Score"), &sbRedScoreCharId);
-    if (! success) {
-    error(F("Could not add RS characteristic"));
-  }
-
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0xac3b, PROPERTIES=0x0A, MIN_LEN=1, MAX_LEN=4, VALUE=0, DESCRIPTION= Red Score"), &sbRedScoreCharId);
+ 
   /* Add the Blue Score characteristic */
   /* Chars ID for Blue Team should be 2 */
   Serial.println(F("Adding the blue score characteristic (UUID = 0x2D70): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0xac3c, PROPERTIES=0x0A, MIN_LEN=1, MAX_LEN=4, VALUE=1, DESCRIPTION= Blue Score"), &sbBlueScoreCharId);
-    if (! success) {
-    error(F("Could not add BS characteristic"));
-  }
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0xac3c, PROPERTIES=0x0A, MIN_LEN=1, MAX_LEN=4, VALUE=0, DESCRIPTION= Blue Score"), &sbBlueScoreCharId);
+  
 
-  /* Add the Heart Rate Service to the advertising data (needed for Nordic apps to detect the service) */
+  /* Add the Scoreboard managing service to the advertising payload */
 
  
-  Serial.print(F("Adding ScoreBoard management Service UUID to the advertising payload: "));
+ // Serial.print(F("Adding ScoreBoard management Service UUID to the advertising payload: "));
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=11-07-5d-0c-81-5d-74-0b-15-a8-49-4f-3f-33-7c-e2-ee-92") );
           
-
-
-
   /* Reset the device for the new service setting changes to take effect */
-  Serial.print(F("Performing a SW reset (service changes require a reset): "));
+ // Serial.print(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
+  //Serial.println();
 
-ble.setDisconnectCallback(disconnected);
-  Serial.println();
+  pixels.begin(); // This initializes the NeoPixel library.
 
-   pixels.begin(); // This initializes the NeoPixel library.
-
+  drawBlock(0, '0' , false, 0, 0, BRIGHTNESS);
+  drawBlock(35,'0' , true, 0, 0, BRIGHTNESS);
+  drawBlock(70, '0' , false, 0, BRIGHTNESS, 0);
+  drawBlock(105, '0' , true, 0, BRIGHTNESS, 0);
   
-   //Read as blue-left, blue-right. Parses out the 10s and 1s place. Ex. 25 is split to get 2 and 5.
-   char b_l = (blueScore % 100 / 10) + '0';
-   char b_r = (blueScore % 10 / 1) + '0';
-  //Red-left, red-right
-   char r_l = (redScore % 100 / 10) + '0';
-   char r_r = (redScore % 10 / 1) + '0';
-
- 
-  drawBlock(0, b_l , false, 0, 0, 25);
-  drawBlock(35, b_r , true, 0, 0, 25);
-
-  drawBlock(70, r_l , false, 0, 25, 0);
-  drawBlock(105, r_r , true, 0, 25, 0);
   pixels.show();
- 
-
-
 }
 
 /** Send randomized heart rate data continuously **/
 void loop(void)
 {
-
-    ble.print( F("AT+GATTCHAR=") );
-    ble.println( sbRedScoreCharId );
-   
-  
-  /* Command is sent when \n (\r) or println is called */
-  /* AT+GATTCHAR=CharacteristicID,value */
-  /*
-  ble.print( F("AT+GATTCHAR=") );
-  ble.print( sbRedScoreCharId );
-  ble.print( F(",") );
-  ble.println(sbBlueScoreCharId, HEX);
-*/
+  //Check if Blue Score characteristic has changed.
+   if(ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)){
+      blueScore = atoi(ble.buffer);  
+   }
 
  
- ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID);
-  
-
-  redScore = atoi(ble.buffer);  
-
-  if(redScore != prevRedScore){
-    prevRedScore = redScore;
-
-    if(redScore == 24 && redScore > blueScore + 2){
-      drawBlock(0, 'S' , false, 0, 25, 0);
-      drawBlock(35, 'P' , true, 0, 25, 0);
-      drawBlock(70, 'I' , false, 0, 25, 0);
-      drawBlock(105, 'N' , true, 0, 25, 0);
-      pixels.show();
-      delay(2500);
-    }
-
-
-char r_l = (redScore % 100 / 10) + '0';
-   char r_r = (redScore % 10 / 1) + '0';
-    drawBlock(70, r_l , false, 0, 25, 0);
-  drawBlock(105, r_r , true, 0, 25, 0);
-  pixels.show();
-  }
-  /* Check if command executed OK */
-   ble.waitForOK();
-
-   ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID);
-  
-
-  blueScore = atoi(ble.buffer);  
-
   if(blueScore != prevBlueScore){
     prevBlueScore = blueScore;
 
-
-char b_l = (blueScore % 100 / 10) + '0';
+  if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
+      drawSPIN(0,0,BRIGHTNESS);
+      prevRedScore--;
+    }
+    
+   char b_l = (blueScore % 100 / 10) + '0';
    char b_r = (blueScore % 10 / 1) + '0';
-    drawBlock(0, b_l , false, 0, 0,25);
-  drawBlock(35, b_r , true, 0, 0, 25);
+
+   drawBlock(0, b_l , false, 0, 0,BRIGHTNESS);
+   drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
+   pixels.show();
+  }
+  /* Check if command executed OK */
+   ble.waitForOK();
+  
+  //Check if Red Score characteristic has changed.
+  if(ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)){
+    redScore = atoi(ble.buffer);  
+  }
+  
+  if(redScore != prevRedScore){
+    prevRedScore = redScore;
+
+    if(redScore >= GAMEPOINT - 1 && redScore > blueScore ){
+     drawSPIN(0,BRIGHTNESS,0);
+      prevBlueScore--;
+    }
+    
+   char r_l = (redScore % 100 / 10) + '0';
+   char r_r = (redScore % 10 / 1) + '0';
+  
+   drawBlock(70, r_l , false, 0, BRIGHTNESS, 0);
+   drawBlock(105, r_r , true, 0, BRIGHTNESS, 0);
+  
   pixels.show();
   }
   /* Check if command executed OK */
    ble.waitForOK();
-
-   
- 
-ble.sendCommandWithIntReply( F("AT+GAPGETCONN"),  &connection);
-
-  if( connection == 0){
-     ble.sendCommandCheckOK(F("AT+GAPDISCONNECT"));
-  }
-
-
-
-
- 
- 
-
-  /* Delay before next measurement update */
-  delay(2000);
-}
+  
+ }
 
 
 void drawBlock(int offset, char character, bool isRight, int g, int r, int b){
   charToDigitalLetterArray(character, isRight);
    for(int i = 0 ; i < 35; i++){
-         Serial.print(i);
            if(p_to_character[i] == '1'){
            // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255 
            pixels.setPixelColor(i + offset, pixels.Color(g,r,b)); // Moderately bright green color.
-            Serial.println("ON");
         }else{
              pixels.setPixelColor(i + offset, pixels.Color(0,0,0)); //Set LED off.
-              Serial.println("OFF");
          }
-}
+  }
 }
 
 void charToDigitalLetterArray (char character, bool isRight){
@@ -353,24 +284,65 @@ void charToDigitalLetterArray (char character, bool isRight){
     case '9': if(isRight) p_to_character = nine_right; 
               else  p_to_character = nine_left;
               break;
-    case 'S': if(isRight) p_to_character = S_right; 
-              else  p_to_character = S_left;
+    case 'S': p_to_character = S_left; 
               break;
-    case 'P': if(isRight) p_to_character = P_right; 
-              else  p_to_character = P_left;
+    case 'i': p_to_character = i_left;
               break;
-    case 'I': if(isRight) p_to_character = I_right; 
-              else  p_to_character = I_left;
+    case 'o': p_to_character = o_right; 
               break;
-    case 'N': if(isRight) p_to_character = N_right; 
-              else  p_to_character = N_left;
+    case 'W': p_to_character = W_left; 
+              break;
+    case 'z': p_to_character = z_right; 
+              break;
+    case 'g':  p_to_character = g_left;
+              break;
+    case 'a':  p_to_character = a_right;          
+              break;
+    case 'm':  p_to_character = m_left;
+              break;
+    case 'e':  p_to_character = e_right; 
+              break;
+    case 'p': if(isRight) p_to_character = p_right;
+              else p_to_character = p_left;
+              break;
+    case 'x': p_to_character = o_with_i_right;
+              break;
+    case 'n': if(isRight) p_to_character = n_right;
+              else p_to_character = n_left;
+              break;
+    case 't':  if(isRight) p_to_character = t_right; 
+              else p_to_character = t_left;
               break;
   }
 }
 
-void disconnected(void)
-{
-  Serial.println( F("Disconnected") );
-   ble.sendCommandCheckOK(F("AT+GAPDISCONNECT"));
+void drawGamePoint(int g, int r, int b){
+      drawBlock(0, 'g' , false, g,r,b);
+      drawBlock(35, 'a' , true, g,r,b);
+      drawBlock(70, 'm' , false, g,r,b);
+      drawBlock(105, 'e' , true, g,r,b);
+      pixels.show();
+      delay(2000);
+      drawBlock(0, 'p' , false, g,r,b);
+      drawBlock(35, 'o' , true, g,r,b);
+      drawBlock(70, 'x' , false, g,r,b);
+      drawBlock(105, 't' , true, g,r,b);
+      pixels.show();
+      delay(2000);
+}
+
+void drawSPIN(int g, int r, int b){
+      drawBlock(0, 'S' , false, g,r,b);
+      drawBlock(35, 'p' , true, g,r,b);
+      drawBlock(70, 'i' , false, g,r,b);
+      drawBlock(105, 'n' , true, g,r,b);
+      pixels.show();
+      delay(1500);
+      drawBlock(0, 't' , false, g,r,b);
+      drawBlock(35, 'o' , true, g,r,b);
+      drawBlock(70, 'W' , false, g,r,b);
+      drawBlock(105, 'z' , true, g,r,b);
+      pixels.show();
+      delay(1500);
 }
 
