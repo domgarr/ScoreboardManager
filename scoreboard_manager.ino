@@ -198,7 +198,10 @@ void loop(void)
   if(blueScore != prevBlueScore){
     prevBlueScore = blueScore;
 
-  if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
+
+  if(blueScore >= GAMEPOINT && blueScore >= redScore + 2){
+    //do nothing
+  }else if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
       drawSPIN(0,0,BRIGHTNESS);
       prevRedScore--;
     }
@@ -220,8 +223,10 @@ void loop(void)
   
   if(redScore != prevRedScore){
     prevRedScore = redScore;
-
-    if(redScore >= GAMEPOINT - 1 && redScore > blueScore ){
+    
+    if(redScore >= GAMEPOINT && redScore >= blueScore + 2){
+    //do nothing
+    }else if(redScore >= GAMEPOINT - 1 && redScore > blueScore ){
      drawSPIN(0,BRIGHTNESS,0);
       prevBlueScore--;
     }
