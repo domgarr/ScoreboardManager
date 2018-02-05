@@ -1,53 +1,77 @@
-
 #include <Arduino.h>
 #include <SPI.h>
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
+#include <Adafruit_NeoPixel.h>
+#include "BluefruitConfig.h"
 
 #if SOFTWARE_SERIAL_AVAILABLE
   #include <SoftwareSerial.h>
 #endif
 
-#include <Adafruit_NeoPixel.h>
-
-#include "BluefruitConfig.h"
-
+//Constants
 #define RED_SCORE_ID "1"
 #define BLUE_SCORE_ID "2"
 #define BRIGHTNESS 25
 #define GAMEPOINT 25
 
-
-// Which pin on the Arduino is connected to the NeoPixels?
-// On a Trinket or Gemma we suggest changing this to 1
+/* 
+ *  This is the pin at which the Adressable LEDs are connected. Note the pin has to have a tilda, referring
+ *  PWN, pulse width modulation, which controls the brightness of the LEDS.
+ *  Domenic.
+*/
 #define PIN            9
 
-// How many NeoPixels are attached to the Arduino?
+/*
+ * The amount of LEDs being used for the scoreboard is 140.
+ */
 #define NUMPIXELS   140
+
+/*
+ * Each number on the scoreboard is a 5 column by 7 row grid. 
+ */
 
 #define ROW 7
 #define COL 5
 
 // When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
-// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
-// example for more information on possible values.
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ400);
 
-/* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
+/*  ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
-/* The service information */
-/* int32_t is a data type of exactly 32 bits no more no less. Int can be any size >= 16 bits. */
+/* The service information 
+* - int32_t is a data type of exactly 32 bits no more no less. Int can be any size >= 16 bits. 
+* - Data in Bluetooth Low Energy devices are grouped by GATT (Generic Attribute Protocol) 
+*   services, which can contain many GATT characteristics which contain the actual data.
+* - If you want to read up on it more use : https://learn.adafruit.com/introduction-to-bluetooth-low-energy/gatt#services-and-characteristics
+*/
+
+/*
+ * Here we instantiate a scoreboard Service id, it contains two characteristics to set or read either
+ * the red or blue team's score.
+ */
 int32_t sbServiceId;
 int32_t sbRedScoreCharId;
 int32_t sbBlueScoreCharId;
 
+/*
+ *  The following variables are used to set the score and see if the scores were changed. 
+ *  That way we aren't iterating through pixels that haven't changed.
+ */
 int redScore = 0;
 int blueScore = 0;
 int prevRedScore = redScore;
 int prevBlueScore = blueScore;
 
+
+/*
+ *  The variables that store the information of whether a LED should be turned off or on.
+ *  Note here that there are left and right options. The way I structured the LEDs on the scoreboard
+ *  resulted in needing two different orientations. I wrote a help programming in java to reduce some
+ *  of the work. It's on my github. 
+ */
  const char zero_left[] =  "01110100011001110101110011000101110";
  const char zero_right[] = "01110100011100110101100111000101110";
  const char one_left[] =  "00010011000101001000000100100000010";          
@@ -90,6 +114,7 @@ const char W_left[] = "10001100011000110001101011101110001";
 //i_with_n_right[]
 const char z_right[] = "11001100111100110011111100000010000";
 
+//A pointer that will reference the next number to display on the scoreboard.
 const char *p_to_character; //This will point to the next pixel grid to be drawn.
 
 void setup(void)
@@ -174,10 +199,11 @@ void setup(void)
  // Serial.print(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
-  //Serial.println();
+  
 
   pixels.begin(); // This initializes the NeoPixel library.
 
+  //By default the scoreboard initialized with four zero's this does that.
   drawBlock(0, '0' , false, 0, 0, BRIGHTNESS);
   drawBlock(35,'0' , true, 0, 0, BRIGHTNESS);
   drawBlock(70, '0' , false, 0, BRIGHTNESS, 0);
@@ -189,28 +215,39 @@ void setup(void)
 /** Send randomized heart rate data continuously **/
 void loop(void)
 {
+  //Start red side logic.
+  
   //Check if Blue Score characteristic has changed.
    if(ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)){
       blueScore = atoi(ble.buffer);  
    }
 
- 
+  /*
+   * Only if there was a change in the bluescore value. As of now only the Samsung S2 gear watch can do so.
+   *  will the following run.
+  */
   if(blueScore != prevBlueScore){
     prevBlueScore = blueScore;
 
-
+ /*
+  * This stops "Spin to Win" from displaying after the game is won.
+  */
   if(blueScore >= GAMEPOINT && blueScore >= redScore + 2){
-    //do nothing
+      //Game is won, do nothing. Temporary fix to "Spin to Win" flashing after the game was won.
   }else if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
+      //Possible game, display the house rule of "Spin to Win"
       drawSPIN(0,0,BRIGHTNESS);
+      //This is needed for the red score side to update, and return back to the score value.
       prevRedScore--;
     }
-    
+
+   //Using modulus operation here to seperate our double digit into single digit characters.
    char b_l = (blueScore % 100 / 10) + '0';
    char b_r = (blueScore % 10 / 1) + '0';
-
+   //Alters the blue side pixels.
    drawBlock(0, b_l , false, 0, 0,BRIGHTNESS);
    drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
+   
    pixels.show();
   }
   /* Check if command executed OK */
@@ -220,7 +257,9 @@ void loop(void)
   if(ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)){
     redScore = atoi(ble.buffer);  
   }
-  
+ 
+  //Start of red side logic. It is exactly the same to the blue side.
+
   if(redScore != prevRedScore){
     prevRedScore = redScore;
     
@@ -244,7 +283,24 @@ void loop(void)
   
  }
 
-
+/*
+ * Sets a block - which is a one of the four sets of grids that display a character - to a desired character  
+ * 
+ * Scoreboard...
+ * 
+ *  [L] [R] m [L] [R]
+ * 
+ * m - is the center of the scoreboard
+ * [] - denotes a block, contains a number or character
+ * L/R - left or right needs to be specified, since due to wiring the four blocks differ.
+ * 
+ * @param offset An integer that should be set to either 0, 35, 70, 105 that represents the first to fourth character on the scoreboard starting at the left.
+ * @param character A char representing a number or chracter.
+ * @param isRight A boolean value that needs to specify wheter the block is on the left or right side of the scoreboard. 
+ * @param r - Sets the intensity of red in the LED between 0 - 255  
+ * @param g - Sets the intensity of green in the LED between 0 - 255  
+ * @param b - Sets the intensity of blue in the LED between 0 - 255  
+ */
 void drawBlock(int offset, char character, bool isRight, int g, int r, int b){
   charToDigitalLetterArray(character, isRight);
    for(int i = 0 ; i < 35; i++){
@@ -257,6 +313,12 @@ void drawBlock(int offset, char character, bool isRight, int g, int r, int b){
   }
 }
 
+/*
+ * This function is used by drawBlock to set the pointer's reference  (p_to_character)
+ * to the next desired number or character. 
+ * @param character  a character that matches with a case to a implemented character mapping
+ * @param isRight  will draw the character for the left side is set to false, or the right side if set to true
+ */
 void charToDigitalLetterArray (char character, bool isRight){
   switch(character){
     case '0': if(isRight) p_to_character = zero_right; 
@@ -321,6 +383,12 @@ void charToDigitalLetterArray (char character, bool isRight){
   }
 }
 
+/*
+ * Displays game point on the scoreboard. Flashes game for two seconds than point for two seconds.
+ * @param r - Sets the intensity of red in the LED between 0 - 255  
+ * @param g - Sets the intensity of green in the LED between 0 - 255  
+ * @param b - Sets the intensity of blue in the LED between 0 - 255 
+ */
 void drawGamePoint(int g, int r, int b){
       drawBlock(0, 'g' , false, g,r,b);
       drawBlock(35, 'a' , true, g,r,b);
@@ -336,6 +404,12 @@ void drawGamePoint(int g, int r, int b){
       delay(2000);
 }
 
+/*
+ * Displays "Spin to Win" on the scoreboard. Flashes "Spin" for 1.5 seconds than "to Win" for 1.5 seconds.
+ * @param r - Sets the intensity of red in the LED between 0 - 255  
+ * @param g - Sets the intensity of green in the LED between 0 - 255  
+ * @param b - Sets the intensity of blue in the LED between 0 - 255 
+ */
 void drawSPIN(int g, int r, int b){
       drawBlock(0, 'S' , false, g,r,b);
       drawBlock(35, 'p' , true, g,r,b);
