@@ -57,6 +57,12 @@ int32_t sbRedScoreCharId;
 int32_t sbBlueScoreCharId;
 
 /*
+  This variable controls ButtonMode, that is instead of the scoreboard being controlled by the smartwatch
+  buttons can now be used.
+*/
+int32_t watchConnected;
+
+/*
  *  The following variables are used to set the score and see if the scores were changed. 
  *  That way we aren't iterating through pixels that haven't changed.
  */
@@ -65,6 +71,14 @@ int blueScore = 0;
 int prevRedScore = redScore;
 int prevBlueScore = blueScore;
 
+/*
+ * References for ButtonMode
+ */
+ int blueAddPin = 6;
+ int blueMinusPin = 5;
+
+ int blueAddPrevState = HIGH;
+ int blueMinusPrevState = HIGH;
 
 /*
  *  The variables that store the information of whether a LED should be turned off or on.
@@ -210,77 +224,58 @@ void setup(void)
   drawBlock(105, '0' , true, 0, BRIGHTNESS, 0);
   
   pixels.show();
+
+  //Instantiate Pins for ButtonMode incase it is used.
+  pinMode(blueAddPin, INPUT_PULLUP);
+  pinMode(blueMinusPin, INPUT_PULLUP);
 }
 
 /** Send randomized heart rate data continuously **/
 void loop(void)
 {
-  //Start red side logic.
   
-  //Check if Blue Score characteristic has changed.
-   if(ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)){
-      blueScore = atoi(ble.buffer);  
-   }
-
-  /*
-   * Only if there was a change in the bluescore value. As of now only the Samsung S2 gear watch can do so.
-   *  will the following run.
-  */
-  if(blueScore != prevBlueScore){
-    prevBlueScore = blueScore;
-
- /*
-  * This stops "Spin to Win" from displaying after the game is won.
-  */
-  if(blueScore >= GAMEPOINT && blueScore >= redScore + 2){
-      //Game is won, do nothing. Temporary fix to "Spin to Win" flashing after the game was won.
-  }else if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
-      //Possible game, display the house rule of "Spin to Win"
-      drawSPIN(0,0,BRIGHTNESS);
-      //This is needed for the red score side to update, and return back to the score value.
-      prevRedScore--;
+  ble.sendCommandWithIntReply(F("AT+GAPGETCONN"), &watchConnected);
+  //If watch is connected to scoreboard, switch to button controls.
+  if( watchConnected == 0){
+    
+    if(digitalRead(blueAddPin) == LOW){
+      if(blueAddPrevState == HIGH){
+        blueAddPrevState = LOW;
+         blueScore++;
+         delay(10);
+         renderBlueScore();
+      }
+    }else{
+      blueAddPrevState = HIGH;
     }
 
-   //Using modulus operation here to seperate our double digit into single digit characters.
-   char b_l = (blueScore % 100 / 10) + '0';
-   char b_r = (blueScore % 10 / 1) + '0';
-   //Alters the blue side pixels.
-   drawBlock(0, b_l , false, 0, 0,BRIGHTNESS);
-   drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
-   
-   pixels.show();
-  }
-  /* Check if command executed OK */
-   ble.waitForOK();
-  
-  //Check if Red Score characteristic has changed.
-  if(ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)){
-    redScore = atoi(ble.buffer);  
-  }
- 
-  //Start of red side logic. It is exactly the same to the blue side.
-
-  if(redScore != prevRedScore){
-    prevRedScore = redScore;
-    
-    if(redScore >= GAMEPOINT && redScore >= blueScore + 2){
-    //do nothing
-    }else if(redScore >= GAMEPOINT - 1 && redScore > blueScore ){
-     drawSPIN(0,BRIGHTNESS,0);
-      prevBlueScore--;
+    if(digitalRead(blueMinusPin) == LOW){
+      if(blueMinusPrevState == HIGH){
+        blueMinusPrevState = LOW;
+         blueScore--;
+        delay(10);
+        renderBlueScore();
+      }
+    }else{
+       blueMinusPrevState = HIGH;
     }
     
-   char r_l = (redScore % 100 / 10) + '0';
-   char r_r = (redScore % 10 / 1) + '0';
+  }else{
+    //Start red side logic.
+    //Check if Blue Score characteristic has changed.
+     if(ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)){
+        blueScore = atoi(ble.buffer);  
+     }
   
-   drawBlock(70, r_l , false, 0, BRIGHTNESS, 0);
-   drawBlock(105, r_r , true, 0, BRIGHTNESS, 0);
-  
-  pixels.show();
+      //Check if Red Score characteristic has changed.
+    if(ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)){
+      redScore = atoi(ble.buffer);  
+    }
+
+    renderBlueScore();
+    renderRedScore();
+
   }
-  /* Check if command executed OK */
-   ble.waitForOK();
-  
  }
 
 /*
@@ -423,5 +418,58 @@ void drawSPIN(int g, int r, int b){
       drawBlock(105, 'z' , true, g,r,b);
       pixels.show();
       delay(1500);
+}
+
+void renderBlueScore(){
+ /*
+   * Only if there was a change in the bluescore value. As of now only the Samsung S2 gear watch can do so.
+   *  will the following run.
+  */
+  if(blueScore != prevBlueScore){
+    prevBlueScore = blueScore;
+
+ /*
+  * This stops "Spin to Win" from displaying after the game is won.
+  */
+  if(blueScore >= GAMEPOINT && blueScore >= redScore + 2){
+      //Game is won, do nothing. Temporary fix to "Spin to Win" flashing after the game was won.
+  }else if(blueScore >= GAMEPOINT-1 && blueScore > redScore ){
+      //Possible game, display the house rule of "Spin to Win"
+      drawSPIN(0,0,BRIGHTNESS);
+      //This is needed for the red score side to update, and return back to the score value.
+      prevRedScore--;
+    }
+
+   //Using modulus operation here to seperate our double digit into single digit characters.
+   char b_l = (blueScore % 100 / 10) + '0';
+   char b_r = (blueScore % 10 / 1) + '0';
+   //Alters the blue side pixels.
+   drawBlock(0, b_l , false, 0, 0,BRIGHTNESS);
+   drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
+   
+   pixels.show();
+  }
+}
+
+void renderRedScore(){
+  //Start of red side logic. It is exactly the same to the blue side.
+  if(redScore != prevRedScore){
+    prevRedScore = redScore;
+    
+    if(redScore >= GAMEPOINT && redScore >= blueScore + 2){
+    //do nothing
+    }else if(redScore >= GAMEPOINT - 1 && redScore > blueScore ){
+     drawSPIN(0,BRIGHTNESS,0);
+      prevBlueScore--;
+    }
+    
+   char r_l = (redScore % 100 / 10) + '0';
+   char r_r = (redScore % 10 / 1) + '0';
+  
+   drawBlock(70, r_l , false, 0, BRIGHTNESS, 0);
+   drawBlock(105, r_r , true, 0, BRIGHTNESS, 0);
+  
+  pixels.show();
+  }
 }
 
