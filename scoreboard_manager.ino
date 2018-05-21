@@ -109,8 +109,10 @@ const char nine_right[] = "01110100010000111110100011000101110";
 //Spin to Win
 const char S_left[] = "01110100011000001110000011000101110";
 const char p_right[] = "10000000011110001001100100011100000";
+const char p_left[] = "00000001111001001001111000000110000";
 const char i_left[] = "00100000000010000100001000010000100";
 const char n_right[] = "10010010011001001001111000000000000";
+const char n_left[] = "00000000001110001001100100100110010";
 const char t_left[] = "00000000101111000010010000001000110";
 const char o_right[] = "01100010011001001001011000000000000";
 const char W_left[] = "10001100011000110001101011101110001";
@@ -275,7 +277,7 @@ void loop(void)
     if (digitalRead(redMinusPin) == LOW) {
       if (redMinusPrevState == HIGH) {
         redMinusPrevState = LOW;
-        redSCo
+        redScore--;
         if (redScore < 0) {
           redScore = 0;
         }
@@ -390,7 +392,15 @@ void charToDigitalLetterArray (char character, bool isRight) {
       break;
     case 'S': p_to_character = S_left;
       break;
+    case 'p': if(isRight) p_to_character = p_right;
+      else p_to_character = p_left;
+      break;
     case 'i': p_to_character = i_left;
+      break;
+    case 'n': if(isRight) p_to_character = n_right;
+      else p_to_character = n_left;
+      break;
+    case 't':  if(!isRight) p_to_character = t_left; 
       break;
     case 'o': p_to_character = o_right;
       break;
@@ -398,6 +408,7 @@ void charToDigitalLetterArray (char character, bool isRight) {
       break;
     case 'z': p_to_character = z_right;
       break;
+    
   }
 }
 
