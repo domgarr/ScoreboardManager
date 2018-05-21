@@ -70,12 +70,12 @@ int prevBlueScore = blueScore;
 /*
    References for ButtonMode
 */
-const int blueAddPin = 12;
+const int blueAddPin = 3;
 const int blueMinusPin = 5;
 int blueAddPrevState = HIGH;
 int blueMinusPrevState = HIGH;
 
-const int redAddPin = 6;
+const int redAddPin = 12;
 const int redMinusPin = 13;
 int redAddPrevState = HIGH;
 int redMinusPrevState = HIGH;
