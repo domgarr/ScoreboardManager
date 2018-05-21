@@ -70,12 +70,12 @@ int prevBlueScore = blueScore;
 /*
    References for ButtonMode
 */
-const int blueAddPin = 3;
+const int blueAddPin = 12;
 const int blueMinusPin = 5;
 int blueAddPrevState = HIGH;
 int blueMinusPrevState = HIGH;
 
-const int redAddPin = 12;
+const int redAddPin = 6;
 const int redMinusPin = 13;
 int redAddPrevState = HIGH;
 int redMinusPrevState = HIGH;
@@ -233,7 +233,6 @@ void loop(void)
     if (digitalRead(blueAddPin) == LOW) {
       if (blueAddPrevState == HIGH) {
         blueAddPrevState = LOW;
-        Serial.print("B+");
         blueScore++;
         delay(10);
         renderBlueScore();
@@ -245,7 +244,6 @@ void loop(void)
     if (digitalRead(blueMinusPin) == LOW) {
       if (blueMinusPrevState == HIGH) {
         blueMinusPrevState = LOW;
-        Serial.print("B-");
         blueScore--;
         if(blueScore < 0 ){
           blueScore = 0;
@@ -263,7 +261,7 @@ void loop(void)
       if (redAddPrevState == HIGH) {
         redAddPrevState = LOW;
         redScore++;
-      Serial.print("R+");
+      
 
         delay(10);
         renderRedScore();
@@ -277,8 +275,7 @@ void loop(void)
     if (digitalRead(redMinusPin) == LOW) {
       if (redMinusPrevState == HIGH) {
         redMinusPrevState = LOW;
-        Serial.print("R-");
-        redScore--;
+        redSCo
         if (redScore < 0) {
           redScore = 0;
         }
@@ -297,7 +294,6 @@ void loop(void)
         resetPrevState = LOW;
         blueScore = 0;
         redScore = 0;
-        Serial.print("R");
         delay(10);
         renderBlueScore();
         renderRedScore();
