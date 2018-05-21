@@ -203,8 +203,7 @@ void setup(void)
   // Serial.print(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
-
-
+  
   pixels.begin(); // This initializes the NeoPixel library.
 
   //By default the scoreboard initialized with four zero's this does that.
@@ -224,7 +223,6 @@ void setup(void)
 
 }
 
-/** Send randomized heart rate data continuously **/
 void loop(void)
 {
 
@@ -235,9 +233,10 @@ void loop(void)
     if (digitalRead(blueAddPin) == LOW) {
       if (blueAddPrevState == HIGH) {
         blueAddPrevState = LOW;
+        prevBlueScore = blueScore;
         blueScore++;
         delay(10);
-        renderBlueScore();
+        conditionalBlueScoreRender();
       }
     } else {
       blueAddPrevState = HIGH;
@@ -246,12 +245,13 @@ void loop(void)
     if (digitalRead(blueMinusPin) == LOW) {
       if (blueMinusPrevState == HIGH) {
         blueMinusPrevState = LOW;
+        prevBlueScore = blueScore;
         blueScore--;
         if(blueScore < 0 ){
           blueScore = 0;
         }
         delay(10);
-        renderBlueScore();
+        conditionalBlueScoreRender();
       }
     } else {
       blueMinusPrevState = HIGH;
@@ -262,35 +262,35 @@ void loop(void)
     if (digitalRead(redAddPin) == LOW) {
       if (redAddPrevState == HIGH) {
         redAddPrevState = LOW;
+        prevRedScore = redScore;
         redScore++;
-      
-
         delay(10);
-        renderRedScore();
+        conditionalRedScoreRender();
+   
       }
-    } else {
+     } else {
       redAddPrevState = HIGH;
-    }
+     }
+    
 
 
 
     if (digitalRead(redMinusPin) == LOW) {
       if (redMinusPrevState == HIGH) {
         redMinusPrevState = LOW;
+        prevRedScore = redScore;
         redScore--;
         if (redScore < 0) {
           redScore = 0;
         }
-    
-        
         delay(10);
-        renderRedScore();
+        conditionalRedScoreRender();
       }
+       
     } else {
       redMinusPrevState = HIGH;
     }
-
-
+    
     if (digitalRead(resetPin) == LOW) {
       if (resetPrevState == HIGH) {
         resetPrevState = LOW;
@@ -307,19 +307,23 @@ void loop(void)
   } else {
     //Start red side logic.
     //Check if Blue Score characteristic has changed.
-    if (ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)) {
+    if (ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)) { 
       blueScore = atoi(ble.buffer);
+      if(blueScore != prevBlueScore){
+        conditionalBlueScoreRender();
+        prevBlueScore = blueScore;
+      }
     }
 
     //Check if Red Score characteristic has changed.
     if (ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)) {
       redScore = atoi(ble.buffer);
+      if(redScore != prevRedScore){ 
+        conditionalRedScoreRender();
+        prevRedScore = redScore;
+      }
     }
-
-    renderBlueScore();
-    renderRedScore();
-
-  }
+   }
 }
 
 /*
@@ -434,23 +438,12 @@ void drawSPIN(int g, int r, int b) {
 }
 
 void renderBlueScore() {
-  /*
-      Only if there was a change in the bluescore value. As of now only the Samsung S2 gear watch can do so.
-       will the following run.
-  */
-  if (blueScore != prevBlueScore) {
-    prevBlueScore = blueScore;
-
-    /*
-       This stops "Spin to Win" from displaying after the game is won.
-    */
     if (blueScore >= GAMEPOINT && blueScore >= redScore + 2) {
       //Game is won, do nothing. Temporary fix to "Spin to Win" flashing after the game was won.
     } else if (blueScore >= GAMEPOINT - 1 && blueScore > redScore ) {
       //Possible game, display the house rule of "Spin to Win"
       drawSPIN(0, 0, BRIGHTNESS);
-      //This is needed for the red score side to update, and return back to the score value.
-      prevRedScore--;
+      renderRedScore();
     }
 
     //Using modulus operation here to seperate our double digit into single digit characters.
@@ -461,19 +454,14 @@ void renderBlueScore() {
     drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
 
     pixels.show();
-  }
 }
 
 void renderRedScore() {
-  //Start of red side logic. It is exactly the same to the blue side.
-  if (redScore != prevRedScore) {
-    prevRedScore = redScore;
-
     if (redScore >= GAMEPOINT && redScore >= blueScore + 2) {
-      //do nothing
+      //do nothing. Game is won. Don't flash Spin to Win.
     } else if (redScore >= GAMEPOINT - 1 && redScore > blueScore ) {
       drawSPIN(0, BRIGHTNESS, 0);
-      prevBlueScore--;
+      renderBlueScore();
     }
 
     char r_l = (redScore % 100 / 10) + '0';
@@ -483,6 +471,24 @@ void renderRedScore() {
     drawBlock(105, r_r , true, 0, BRIGHTNESS, 0);
 
     pixels.show();
-  }
 }
+
+bool isChangeInScore(int prevScore, int currScore){
+  return prevScore != currScore;
+}
+
+void conditionalRedScoreRender(){
+   if (isChangeInScore(prevRedScore, redScore)) {
+          renderRedScore();
+        }
+}
+
+void conditionalBlueScoreRender(){
+   if (isChangeInScore(prevBlueScore, blueScore)) {
+          renderBlueScore();
+        }
+}
+
+
+
 
