@@ -233,10 +233,9 @@ void loop(void)
     if (digitalRead(blueAddPin) == LOW) {
       if (blueAddPrevState == HIGH) {
         blueAddPrevState = LOW;
-        prevBlueScore = blueScore;
         blueScore++;
         delay(10);
-        conditionalBlueScoreRender();
+        renderBlueScore();
       }
     } else {
       blueAddPrevState = HIGH;
@@ -245,13 +244,12 @@ void loop(void)
     if (digitalRead(blueMinusPin) == LOW) {
       if (blueMinusPrevState == HIGH) {
         blueMinusPrevState = LOW;
-        prevBlueScore = blueScore;
         blueScore--;
         if(blueScore < 0 ){
           blueScore = 0;
         }
         delay(10);
-        conditionalBlueScoreRender();
+        renderBlueScore();      
       }
     } else {
       blueMinusPrevState = HIGH;
@@ -262,11 +260,9 @@ void loop(void)
     if (digitalRead(redAddPin) == LOW) {
       if (redAddPrevState == HIGH) {
         redAddPrevState = LOW;
-        prevRedScore = redScore;
         redScore++;
         delay(10);
-        conditionalRedScoreRender();
-   
+       renderRedScore();
       }
      } else {
       redAddPrevState = HIGH;
@@ -278,13 +274,12 @@ void loop(void)
     if (digitalRead(redMinusPin) == LOW) {
       if (redMinusPrevState == HIGH) {
         redMinusPrevState = LOW;
-        prevRedScore = redScore;
         redScore--;
         if (redScore < 0) {
           redScore = 0;
         }
         delay(10);
-        conditionalRedScoreRender();
+        renderRedScore();
       }
        
     } else {
