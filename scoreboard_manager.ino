@@ -13,7 +13,7 @@
 //Constants
 #define RED_SCORE_ID "1"
 #define BLUE_SCORE_ID "2"
-#define BRIGHTNESS 25
+#define BRIGHTNESS 15
 #define GAMEPOINT 25
 
 //LEDs PIN
@@ -304,41 +304,24 @@ void loop(void)
     //Check if Blue Score characteristic has changed.
     if (ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)) { 
       blueScore = atoi(ble.buffer);
-      if(blueScore != prevBlueScore){
-        conditionalBlueScoreRender();
+      if(isChangeInScore(prevBlueScore, blueScore)){
         prevBlueScore = blueScore;
+        renderBlueScore();
       }
     }
 
     //Check if Red Score characteristic has changed.
     if (ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)) {
       redScore = atoi(ble.buffer);
-      if(redScore != prevRedScore){ 
-        conditionalRedScoreRender();
+      if(isChangeInScore(prevRedScore, redScore)){ 
         prevRedScore = redScore;
+        renderRedScore();
       }
     }
    }
 }
 
-/*
-   Sets a block - which is a one of the four sets of grids that display a character - to a desired character
 
-   Scoreboard...
-
-    [L] [R] m [L] [R]
-
-   m - is the center of the scoreboard
-   [] - denotes a block, contains a number or character
-   L/R - left or right needs to be specified, since due to wiring the four blocks differ.
-
-   @param offset An integer that should be set to either 0, 35, 70, 105 that represents the first to fourth character on the scoreboard starting at the left.
-   @param character A char representing a number or chracter.
-   @param isRight A boolean value that needs to specify wheter the block is on the left or right side of the scoreboard.
-   @param r - Sets the intensity of red in the LED between 0 - 255
-   @param g - Sets the intensity of green in the LED between 0 - 255
-   @param b - Sets the intensity of blue in the LED between 0 - 255
-*/
 void drawBlock(int offset, char character, bool isRight, int g, int r, int b) {
   charToDigitalLetterArray(character, isRight);
   for (int i = 0 ; i < 35; i++) {
@@ -346,7 +329,7 @@ void drawBlock(int offset, char character, bool isRight, int g, int r, int b) {
       // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
       pixels.setPixelColor(i + offset, pixels.Color(g, r, b)); // Moderately bright green color.
     } else {
-      pixels.setPixelColor(i + offset, pixels.Color(0, 0, 0)); //Set LED off.
+      pixels.setPixelColor(i + offset, pixels.Color(0,0,0 )); //Set LED off.
     }
   }
 }
@@ -471,19 +454,3 @@ void renderRedScore() {
 bool isChangeInScore(int prevScore, int currScore){
   return prevScore != currScore;
 }
-
-void conditionalRedScoreRender(){
-   if (isChangeInScore(prevRedScore, redScore)) {
-          renderRedScore();
-        }
-}
-
-void conditionalBlueScoreRender(){
-   if (isChangeInScore(prevBlueScore, blueScore)) {
-          renderBlueScore();
-        }
-}
-
-
-
-
