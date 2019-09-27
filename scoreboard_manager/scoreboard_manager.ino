@@ -20,7 +20,7 @@
 #endif
 
 //Constants
-#define SCOREBOARD_SERVICE_UUID128 "74-e6-fc-68-dc-9a-11-e9-8a-34-2a-2a-e2-db-cc-e4"
+#define SCOREBOARD_SERVICE_UUID128 "a7-fe-10-50-e1-68-11-e9-81-b4-2a-2a-e2-db-cc-e4"
 #define RED_SCORE_ID "1"
 #define BLUE_SCORE_ID "2"
 #define BRIGHTNESS 15
@@ -196,7 +196,7 @@ void initScoreboardService(){
   /* Change the device name to make it easier to find */
   Serial.println(F("Setting device name to 'Bluefruit SbM': "));
 
-  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Scoreboard 1"));
+  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Scoreboard 2"));
 
   /* Sets transmit power level. Set to maximum value. */
   ble.sendCommandCheckOK(F("AT+BLEPOWERLEVEL=4"));
