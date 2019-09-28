@@ -33,17 +33,17 @@
 /*
    The amount of LEDs being used for the scoreboard is 140.
 */
-#define NUMPIXELS   140
+#define NUMPIXELS   40
 
 /*
    Each number on the scoreboard is a 5 column by 7 row grid.
 */
 
-#define ROW 7
-#define COL 5
+#define ROW 5
+#define COL 4
 
 // When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ400);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN,NEO_GRB + NEO_KHZ800);
 
 /*  ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
@@ -102,13 +102,14 @@ void setup(void)
 {
 
   initScoreboardService();
+  
   pixels.begin(); // This initializes the NeoPixel library.
 
   //By default the scoreboard initialized with four zero's this does that.
   drawBlock(0, '0' , false, 0, 0, BRIGHTNESS);
-  drawBlock(35, '0' , true, 0, 0, BRIGHTNESS);
-  drawBlock(70, '0' , false, 0, BRIGHTNESS, 0);
-  drawBlock(105, '0' , true, 0, BRIGHTNESS, 0);
+  drawBlock(20, '0' , true, 0, 0, BRIGHTNESS);
+  //drawBlock(40, '0' , false, 0, BRIGHTNESS, 0);
+  //drawBlock(60, '0' , true, 0, BRIGHTNESS, 0);
 
   pixels.show();
 
@@ -135,8 +136,10 @@ void loop(void)
 void changeInCharacteristicListener(){
    //Start red side logic.
     //Check if Blue Score characteristic has changed.
-    if (ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)) { 
-      blueScore = atoi(ble.buffer);
+    if (ble.sendCommandCheckOK("AT+GATTCHAR=" BLUE_SCORE_ID)) {
+      //Changed atoi to strtol. Android BLE Api is sending a hex number. This line converst base 16 or hex into an integer.
+      //The older BlueFeather didn't need this? Need to test.
+      blueScore = (int)strtol(ble.buffer,NULL, 16);
       if(isChangeInScore(prevBlueScore, blueScore)){
         prevBlueScore = blueScore;
         renderBlueScore();
@@ -145,7 +148,7 @@ void changeInCharacteristicListener(){
 
     //Check if Red Score characteristic has changed.
     if (ble.sendCommandCheckOK("AT+GATTCHAR=" RED_SCORE_ID)) {
-      redScore = atoi(ble.buffer);
+      redScore = (int)strtol(ble.buffer,NULL, 16);
       if(isChangeInScore(prevRedScore, redScore)){ 
         prevRedScore = redScore;
         renderRedScore();
@@ -154,8 +157,9 @@ void changeInCharacteristicListener(){
 }
 
 void drawBlock(int offset, char character, bool isRight, int g, int r, int b) {
-  charToDigitalLetterArray(character, isRight);
-  for (int i = 0 ; i < 35; i++) {
+  charToDigitalLetterArray(character, isRight); //Sets pointer to number mapping array.
+  
+  for (int i = 0 ; i < 20; i++) {
     if (p_to_character[i] == '1') {
       // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
       pixels.setPixelColor(i + offset, pixels.Color(g, r, b)); // Moderately bright green color.
@@ -348,7 +352,7 @@ void renderBlueScore() {
     char b_r = (blueScore % 10 / 1) + '0';
     //Alters the blue side pixels.
     drawBlock(0, b_l , false, 0, 0, BRIGHTNESS);
-    drawBlock(35, b_r , true, 0, 0, BRIGHTNESS);
+    drawBlock(20, b_r , true, 0, 0, BRIGHTNESS);
 
     pixels.show();
 }
@@ -364,8 +368,8 @@ void renderRedScore() {
     char r_l = (redScore % 100 / 10) + '0';
     char r_r = (redScore % 10 / 1) + '0';
 
-    drawBlock(70, r_l , false, 0, BRIGHTNESS, 0);
-    drawBlock(105, r_r , true, 0, BRIGHTNESS, 0);
+    drawBlock(40, r_l , false, 0, BRIGHTNESS, 0);
+    drawBlock(60, r_r , true, 0, BRIGHTNESS, 0);
 
     pixels.show();
 }
@@ -374,27 +378,31 @@ bool isChangeInScore(int prevScore, int currScore){
   return prevScore != currScore;
 }
 
-//Stored number mappings
-const char zero_left[] =  "01110100011001110101110011000101110";
-const char zero_right[] = "01110100011100110101100111000101110";
-const char one_left[] =  "00010011000101001000000100100000010";
-const char one_right[] = "00010010000001001000010100110000010";
-const char two_left[] = "01110100010000101000001000001011111";
-const char two_right[] = "11111000100010001000000011000101110";
-const char three_left[] = "01110100010000101100000011000101110";
-const char three_right[] = "01110100010000101100000011000101110";
-const char four_left[] = "00011101000100110001111111000000001";
-const char four_right[] = "00001100001111110001010011010000011";
-const char five_left[] = "11111000011000001111000011000011110";
-const char five_right[] = "11110100000000101111100000000111111";
-const char six_left[] = "01110100011000001111100011000101110";
-const char six_right[] = "01110100011000101111100001000101110";
-const char seven_left[] = "11111100000000101000001000010000100";
-const char seven_right[] = "00100001000010001000000011000011111";
-const char eight_left[] = "01110100011000101110100011000101110";
-const char eight_right[] = "01110100011000101110100011000101110";
-const char nine_left[] = "01110100011000111110000011000101110";
-const char nine_right[] = "01110100010000111110100011000101110";
+//Stored number mappings for 4X5 Pixel Scoreboard
+const char zero_left[] = "01101001100110010110";
+const char zero_right[] = "01101001100110010110";
+const char one_left[] = "00100110001001000010";
+const char one_right[] = "00100100001001100010";
+const char two_left[] = "01101001001000101111";
+const char two_right[] = "11110010001010010110";
+//const char three_left[] = "11101000111010001110";
+//const char three_right[] = "11101000111010001110";
+const char three_left[] = "11101000011010001110";
+const char three_right[] = "11101000011010001110";
+const char four_left[] = "10011001111110000001";
+const char four_right[] = "00011000111110011001";
+const char five_left[] = "11110001111010001110";
+const char five_right[] = "11101000111000011111";
+const char six_left[] = "01100001111010010110";
+const char six_right[] = "01101001111000010110";
+//const char seven_left[] = "11111000001000101000";
+//const char seven_right[] = "10000010001010001111";
+const char seven_left[] = "11111000001001000010";
+const char seven_right[] = "00100100001010001111";
+const char eight_left[] = "01101001011010010110";
+const char eight_right[] = "01101001011010010110";
+const char nine_left[] = "01101001011110000110";
+const char nine_right[] = "01101000011110010110";
 
 //Spin to Win
 const char S_left[] = "01110100011000001110000011000101110";
