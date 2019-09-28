@@ -343,7 +343,7 @@ void renderBlueScore() {
       //Game is won, do nothing. Temporary fix to "Spin to Win" flashing after the game was won.
     } else if (blueScore >= GAMEPOINT - 1 && blueScore > redScore ) {
       //Possible game, display the house rule of "Spin to Win"
-      drawSPIN(0, 0, BRIGHTNESS);
+      //drawSPIN(0, 0, BRIGHTNESS);
       renderRedScore();
     }
 
@@ -361,7 +361,7 @@ void renderRedScore() {
     if (redScore >= GAMEPOINT && redScore >= blueScore + 2) {
       //do nothing. Game is won. Don't flash Spin to Win.
     } else if (redScore >= GAMEPOINT - 1 && redScore > blueScore ) {
-      drawSPIN(0, BRIGHTNESS, 0);
+      //drawSPIN(0, BRIGHTNESS, 0);
       renderBlueScore();
     }
 
