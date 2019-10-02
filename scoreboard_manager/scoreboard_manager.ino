@@ -23,7 +23,7 @@
 #define SCOREBOARD_SERVICE_UUID128 "a7-fe-10-50-e1-68-11-e9-81-b4-2a-2a-e2-db-cc-e4"
 #define RED_SCORE_ID "1"
 #define BLUE_SCORE_ID "2"
-#define BRIGHTNESS 15
+#define BRIGHTNESS 50
 #define GAMEPOINT 25
 #define CONNECTED 1
 
@@ -33,7 +33,7 @@
 /*
    The amount of LEDs being used for the scoreboard is 140.
 */
-#define NUMPIXELS   40
+#define NUMPIXELS   80
 
 /*
    Each number on the scoreboard is a 5 column by 7 row grid.
@@ -87,12 +87,12 @@ const int blueMinusPin = 5;
 int blueAddPrevState = HIGH;
 int blueMinusPrevState = HIGH;
 
-const int redAddPin = 12;
-const int redMinusPin = 13;
+const int redAddPin = 9;
+const int redMinusPin = 10;
 int redAddPrevState = HIGH;
 int redMinusPrevState = HIGH;
 
-const int resetPin = 10;
+const int resetPin = 6;
 int resetPrevState = HIGH;
 
 //A pointer that will reference the next number to display on the scoreboard.
@@ -108,8 +108,8 @@ void setup(void)
   //By default the scoreboard initialized with four zero's this does that.
   drawBlock(0, '0' , false, 0, 0, BRIGHTNESS);
   drawBlock(20, '0' , true, 0, 0, BRIGHTNESS);
-  //drawBlock(40, '0' , false, 0, BRIGHTNESS, 0);
-  //drawBlock(60, '0' , true, 0, BRIGHTNESS, 0);
+  drawBlock(40, '0' , false, 0, BRIGHTNESS, 0);
+  drawBlock(60, '0' , true, 0, BRIGHTNESS, 0);
 
   pixels.show();
 
@@ -200,7 +200,7 @@ void initScoreboardService(){
   /* Change the device name to make it easier to find */
   Serial.println(F("Setting device name to 'Bluefruit SbM': "));
 
-  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Scoreboard 2"));
+  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Green Scoreboard"));
 
   /* Sets transmit power level. Set to maximum value. */
   ble.sendCommandCheckOK(F("AT+BLEPOWERLEVEL=4"));
